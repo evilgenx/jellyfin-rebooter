@@ -5,7 +5,7 @@ Welcome to the Jellyfin Reebooter script!
 
 This script was created for a very specific purpose on a very particular setup. I run Jellyfin on an ASUSTOR NAS with 1 gigabyte of RAM, which is not upgradable. While this setup works, Jellyfin can sometimes use a little bit more RAM than I'm comfortable with after playing media. I also use Caddy to manage the reverse proxy as that handles websockets better than the Asustor stuff. This allows me to do Sync Play remotely. Because of this, I manage the Docker containers via Portainer. The purpose of this script is to run as a cron job to regularly restart the Jellyfin services so that the RAM usage doesn't get too out of control.
 
-This script does a little bit more than just blindly reboot everything. It hooks into the Jellyfin API to ensure nobody has an active session. If that's the case, it reboots the Portainer containers. IF there is an active session, it leaves it be. This way I can reboot the containers regualrly, but try to avoid interrupting any active sessions.
+This script does a little bit more than just blindly reboot everything. It hooks into the Jellyfin API to ensure nobody has an active session. If that's the case, it reboots the Portainer containers. IF there is an active session, it leaves it be. This way I can reboot the containers regularly, but try to avoid interrupting any active sessions.
 
 The basic setup process is this:
 
