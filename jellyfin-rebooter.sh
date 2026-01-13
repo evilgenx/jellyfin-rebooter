@@ -73,7 +73,60 @@ echo "   Docker Path: $DOCKER"
 echo "   Containers: $CONTAINERS"
 echo "   Console Output: $SHOW_CONSOLE_OUTPUT"
 echo "   Dry Run Mode: $DRY_RUN"
+echo "   24-Hour Cooldown: $ENABLE_24_HOUR_COOLDOWN"
+echo "   Cooldown Hours: $COOLDOWN_HOURS"
 echo ""
+
+# ----- 24-HOUR COOLDOWN CHECK -----
+if [ "$ENABLE_24_HOUR_COOLDOWN" = "true" ]; then
+    echo "⏰ Checking 24-hour cooldown status..."
+    
+    if [ -f "$COOLDOWN_TRACKING_FILE" ]; then
+        LAST_REBOOT_TIME=$(cat "$COOLDOWN_TRACKING_FILE" 2>/dev/null)
+        if [ -n "$LAST_REBOOT_TIME" ]; then
+            CURRENT_TIME=$(date +%s)
+            LAST_REBOOT_EPOCH=$(date -d "$LAST_REBOOT_TIME" +%s 2>/dev/null)
+            
+            if [ $? -eq 0 ] && [ -n "$LAST_REBOOT_EPOCH" ]; then
+                TIME_DIFF=$((CURRENT_TIME - LAST_REBOOT_EPOCH))
+                COOLDOWN_SECONDS=$((COOLDOWN_HOURS * 3600))
+                
+                if [ $TIME_DIFF -lt $COOLDOWN_SECONDS ]; then
+                    COOLDOWN_REMAINING=$((COOLDOWN_SECONDS - TIME_DIFF))
+                    COOLDOWN_HOURS_REMAINING=$((COOLDOWN_REMAINING / 3600))
+                    COOLDOWN_MINUTES_REMAINING=$(((COOLDOWN_REMAINING % 3600) / 60))
+                    
+                    echo "⏸️  24-hour cooldown active - last reboot was $(date -d "$LAST_REBOOT_TIME")"
+                    echo "   Remaining cooldown: ${COOLDOWN_HOURS_REMAINING}h ${COOLDOWN_MINUTES_REMAINING}m"
+                    echo "[$(date)] 24-hour cooldown active. Last reboot: $LAST_REBOOT_TIME. Skipping restart." >> "$LOG_FILE"
+                    
+                    if [ "$SHOW_CONSOLE_OUTPUT" = "true" ]; then
+                        echo "24-hour cooldown active. Skipping restart."
+                    fi
+                    
+                    echo ""
+                    echo "🏁 Script execution completed at $(date) (cooldown active)"
+                    exit 0
+                else
+                    echo "✅ 24-hour cooldown expired - proceeding with script"
+                    echo "[$(date)] 24-hour cooldown expired. Last reboot: $LAST_REBOOT_TIME. Proceeding with restart." >> "$LOG_FILE"
+                fi
+            else
+                echo "⚠️  Warning: Could not parse last reboot time from tracking file"
+                echo "   Continuing with script execution"
+            fi
+        else
+            echo "⚠️  Warning: Tracking file exists but is empty"
+            echo "   Continuing with script execution"
+        fi
+    else
+        echo "✅ No previous reboot tracking found - proceeding with script"
+    fi
+    echo ""
+else
+    echo "⏭️  24-hour cooldown disabled - proceeding with script"
+    echo ""
+fi
 
 # Show dry-run mode prominently
 if [ "$DRY_RUN" = "true" ]; then
@@ -263,6 +316,15 @@ if [ "$ACTIVE_COUNT" -eq 0 ]; then
     echo "[$(date)] Restart process completed. Success: $SUCCESS_COUNT, Failed: $FAILURE_COUNT" >> "$LOG_FILE"
     if [ "$SHOW_CONSOLE_OUTPUT" = "true" ]; then
         echo "Restart process completed."
+    fi
+    
+    # Update cooldown tracking file on successful restart
+    if [ "$ENABLE_24_HOUR_COOLDOWN" = "true" ] && [ $SUCCESS_COUNT -gt 0 ]; then
+        echo "⏰ Updating 24-hour cooldown tracking..."
+        CURRENT_TIMESTAMP=$(date -Iseconds)
+        echo "$CURRENT_TIMESTAMP" > "$COOLDOWN_TRACKING_FILE"
+        echo "✅ Cooldown tracking updated: $CURRENT_TIMESTAMP"
+        echo "[$(date)] 24-hour cooldown tracking updated: $CURRENT_TIMESTAMP" >> "$LOG_FILE"
     fi
 
 else
