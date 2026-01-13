@@ -22,3 +22,4 @@ config.sh
 # System files
 .DS_Store
 Thumbs.db
+config.conf
