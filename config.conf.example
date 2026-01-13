@@ -1,0 +1,54 @@
+# Jellyfin Rebooter Configuration File - Example
+# Copy this file to config.conf and edit with your settings
+
+# Jellyfin Server Configuration
+JELLYFIN_URL="https://your.jellyfin.server:8096"
+API_KEY="your_jellyfin_api_token_here"
+
+# Logging Configuration
+LOG_FILE="/path/to/your/jellyfin-rebooter.log"
+MAX_LOG_SIZE=500000
+
+# Docker Configuration
+DOCKER="/usr/bin/docker"
+
+# Containers to Restart (space-separated list)
+CONTAINERS="jellyfin nextpvr dispatcharr"
+
+# Console Output (set to "true" to show output on console, "false" for log file only)
+SHOW_CONSOLE_OUTPUT="true"
+
+# Dry Run Mode (set to "true" to test without actually restarting containers)
+DRY_RUN="true"
+
+# 24-Hour Cooldown Configuration
+ENABLE_24_HOUR_COOLDOWN="true"          # Enable/disable the 24-hour cooldown feature
+COOLDOWN_TRACKING_FILE="/path/to/your/last_reboot.txt"  # File to track last reboot time
+COOLDOWN_HOURS=24                       # Configurable cooldown period in hours
+
+# Email Notifications (optional)
+ENABLE_EMAIL_NOTIFICATIONS="false"      # Enable email notifications
+NOTIFICATION_EMAIL="your-email@example.com"  # Email address for notifications
+
+# Container Health Check
+ENABLE_HEALTH_CHECK="true"              # Verify containers are running after restart
+HEALTH_CHECK_DELAY=5                    # Seconds to wait before health check
+HEALTH_CHECK_RETRIES=3                  # Number of health check attempts
+
+# Retry Logic
+ENABLE_RETRY_LOGIC="true"               # Enable retry on restart failures
+MAX_RESTART_ATTEMPTS=3                  # Maximum restart attempts per container
+RETRY_DELAY=2                           # Seconds to wait between retry attempts
+
+# Performance Monitoring
+ENABLE_METRICS="false"                  # Enable performance metrics collection
+METRICS_FILE="/tmp/jellyfin_rebooter_metrics.prom"  # Prometheus-style metrics file
+
+# Container Dependencies (optional)
+# Format: "container1:dependency1,dependency2 container2:dependency3"
+# Example: "dispatcharr:jellyfin nextpvr:jellyfin"
+CONTAINER_DEPENDENCIES=""
+
+# Rate Limiting
+API_RATE_LIMIT=10                       # Maximum API calls per minute
+API_CALL_COUNT_FILE="/tmp/jellyfin_api_calls.txt"
