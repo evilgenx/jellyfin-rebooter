@@ -22,5 +22,5 @@ config.sh
 # System files
 .DS_Store
 Thumbs.db
-config.conf
+jellyfin-rebooter.conf
 last_reboot.txt

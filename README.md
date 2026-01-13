@@ -4,7 +4,7 @@ A robust shell script that automatically restarts Docker containers when no acti
 
 ## Features
 
-- **Configuration File**: Uses a `config.conf` file for easy customization
+- **Configuration File**: Uses a `jellyfin-rebooter.conf` file for easy customization
 - **Console Output**: Shows output on console (configurable)
 - **Dry Run Mode**: Test the script without actually restarting containers
 - **Error Handling**: Comprehensive validation and error messages
@@ -20,10 +20,10 @@ A robust shell script that automatically restarts Docker containers when no acti
 ## Quick Start
 
 1. **Configure the script**:
-   Edit `config.conf` and replace the placeholder values with your actual settings:
+   Edit `jellyfin-rebooter.conf` and replace the placeholder values with your actual settings:
    ```bash
    # Edit the configuration file
-   nano config.conf
+   nano jellyfin-rebooter.conf
    ```
 
 2. **Make the script executable**:
@@ -38,11 +38,11 @@ A robust shell script that automatically restarts Docker containers when no acti
    (The script will show what it would do without actually restarting containers)
 
 4. **Enable actual restarts**:
-   Set `DRY_RUN="false"` in `config.conf`
+   Set `DRY_RUN="false"` in `jellyfin-rebooter.conf`
 
 ## Configuration
 
-Edit `config.conf` to customize the script behavior:
+Edit `jellyfin-rebooter.conf` to customize the script behavior:
 
 ### Required Settings
 - `JELLYFIN_URL`: Your Jellyfin server URL (e.g., `https://your.server:8096`)
@@ -92,25 +92,25 @@ Edit `config.conf` to customize the script behavior:
 
 ### Test with dry-run mode enabled
 ```bash
-# Edit config.conf and set DRY_RUN="true"
+# Edit jellyfin-rebooter.conf and set DRY_RUN="true"
 ./jellyfin-rebooter.sh
 ```
 
 ### Run with actual container restarts
 ```bash
-# Edit config.conf and set DRY_RUN="false"
+# Edit jellyfin-rebooter.conf and set DRY_RUN="false"
 ./jellyfin-rebooter.sh
 ```
 
 ### Run silently (log file only)
 ```bash
-# Edit config.conf and set SHOW_CONSOLE_OUTPUT="false"
+# Edit jellyfin-rebooter.conf and set SHOW_CONSOLE_OUTPUT="false"
 ./jellyfin-rebooter.sh
 ```
 
 ### Enable email notifications
 ```bash
-# Edit config.conf:
+# Edit jellyfin-rebooter.conf:
 ENABLE_EMAIL_NOTIFICATIONS="true"
 NOTIFICATION_EMAIL="your-email@example.com"
 ./jellyfin-rebooter.sh
@@ -118,7 +118,7 @@ NOTIFICATION_EMAIL="your-email@example.com"
 
 ### Enable performance monitoring
 ```bash
-# Edit config.conf:
+# Edit jellyfin-rebooter.conf:
 ENABLE_METRICS="true"
 METRICS_FILE="/var/log/jellyfin_rebooter_metrics.prom"
 ./jellyfin-rebooter.sh
@@ -126,7 +126,7 @@ METRICS_FILE="/var/log/jellyfin_rebooter_metrics.prom"
 
 ### Configure retry logic and health checks
 ```bash
-# Edit config.conf:
+# Edit jellyfin-rebooter.conf:
 ENABLE_RETRY_LOGIC="true"
 MAX_RESTART_ATTEMPTS=5
 RETRY_DELAY=3
@@ -138,7 +138,7 @@ HEALTH_CHECK_RETRIES=2
 
 ### Enable API rate limiting
 ```bash
-# Edit config.conf:
+# Edit jellyfin-rebooter.conf:
 API_RATE_LIMIT=5
 API_CALL_COUNT_FILE="/tmp/jellyfin_api_calls.txt"
 ./jellyfin-rebooter.sh
@@ -151,7 +151,7 @@ To get your Jellyfin API key:
 1. Open Jellyfin web interface
 2. Go to Settings → Advanced
 3. Click "Show API Keys"
-4. Copy your API key and paste it into `config.conf`
+4. Copy your API key and paste it into `jellyfin-rebooter.conf`
 
 ## Scheduling with Cron
 
@@ -170,16 +170,16 @@ crontab -e
 ### Common Issues
 
 1. **"Configuration file not found"**
-   - Make sure `config.conf` exists in the same directory as the script
+   - Make sure `jellyfin-rebooter.conf` exists in the same directory as the script
 
 2. **"JELLYFIN_URL is not configured"**
-   - Edit `config.conf` and set your actual Jellyfin server URL
+   - Edit `jellyfin-rebooter.conf` and set your actual Jellyfin server URL
 
 3. **"API_KEY is not configured"**
-   - Edit `config.conf` and set your actual Jellyfin API token
+   - Edit `jellyfin-rebooter.conf` and set your actual Jellyfin API token
 
 4. **"Docker binary not found"**
-   - Check that Docker is installed and update the `DOCKER` path in `config.conf`
+   - Check that Docker is installed and update the `DOCKER` path in `jellyfin-rebooter.conf`
 
 5. **"Failed to retrieve Jellyfin sessions"**
    - Verify your Jellyfin URL and API key are correct
@@ -235,9 +235,9 @@ jellyfin_rebooter_script_exit_code 0 1705321825
 
 ## Security Notes
 
-- Keep your `config.conf` file secure as it contains your Jellyfin API key
+- Keep your `jellyfin-rebooter.conf` file secure as it contains your Jellyfin API key
 - The API key provides access to your Jellyfin server
-- Consider setting appropriate file permissions: `chmod 600 config.conf`
+- Consider setting appropriate file permissions: `chmod 600 jellyfin-rebooter.conf`
 
 ## License
 

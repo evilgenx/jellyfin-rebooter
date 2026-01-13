@@ -11,7 +11,7 @@ echo "Script PID: $SCRIPT_PID"
 echo ""
 
 # ----- CONFIGURATION LOADING -----
-CONFIG_FILE="config.conf"
+CONFIG_FILE="jellyfin-rebooter.conf"
 
 # Check if config file exists
 if [ ! -f "$CONFIG_FILE" ]; then
