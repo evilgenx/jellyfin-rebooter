@@ -77,6 +77,55 @@ echo "   24-Hour Cooldown: $ENABLE_24_HOUR_COOLDOWN"
 echo "   Cooldown Hours: $COOLDOWN_HOURS"
 echo ""
 
+# ----- CRITICAL SAFETY CHECK: JELLYFIN SESSIONS -----
+echo "🔒 CRITICAL SAFETY CHECK: Verifying no active Jellyfin sessions..."
+echo "📡 Checking Jellyfin sessions..."
+SESSIONS=$(curl -s --connect-timeout 10 --max-time 15 -H "X-Emby-Token: $API_KEY" "$JELLYFIN_URL/Sessions" 2>&1)
+
+if [ $? -ne 0 ]; then
+    echo "❌ ERROR: Failed to retrieve Jellyfin sessions"
+    echo "   Please check:"
+    echo "   - Jellyfin server is running"
+    echo "   - API key is correct"
+    echo "   - Network connectivity"
+    echo "   - API response: $SESSIONS"
+    exit 1
+fi
+
+# Check if API returned an error (simple JSON validation)
+if ! echo "$SESSIONS" | grep -q '"DeviceId\|DeviceName\|UserName"'; then
+    echo "❌ ERROR: Invalid API response format"
+    echo "   Response: $SESSIONS"
+    exit 1
+fi
+
+ACTIVE_COUNT=$(echo "$SESSIONS" | grep -o '"DeviceId"' | wc -l)
+
+echo "📊 Session Analysis:"
+echo "   Total active sessions: $ACTIVE_COUNT"
+if [ "$SHOW_CONSOLE_OUTPUT" = "true" ]; then
+    echo "   $ACTIVE_COUNT active sessions detected"
+fi
+echo "[$(date)] Active sessions: $ACTIVE_COUNT" >> "$LOG_FILE"
+
+# CRITICAL: NEVER restart if there are active sessions, regardless of cooldown status
+if [ "$ACTIVE_COUNT" -gt 0 ]; then
+    echo "🔒 CRITICAL SAFETY: Active sessions detected - ABORTING ALL RESTARTS"
+    echo "   This prevents interrupting users who are actively watching content"
+    echo "[$(date)] CRITICAL SAFETY: Active sessions ($ACTIVE_COUNT) detected. Aborting all restarts to protect users." >> "$LOG_FILE"
+    
+    if [ "$SHOW_CONSOLE_OUTPUT" = "true" ]; then
+        echo "Active sessions detected ($ACTIVE_COUNT). Skipping restart for user safety."
+    fi
+    
+    echo ""
+    echo "🏁 Script execution completed at $(date) (user safety protection active)"
+    exit 0
+fi
+
+echo "✅ No active sessions detected - proceeding with safety checks"
+echo "[$(date)] No active Jellyfin sessions found. Proceeding with safety checks." >> "$LOG_FILE"
+
 # ----- 24-HOUR COOLDOWN CHECK -----
 if [ "$ENABLE_24_HOUR_COOLDOWN" = "true" ]; then
     echo "⏰ Checking 24-hour cooldown status..."
@@ -212,128 +261,80 @@ echo ""
 
 echo "[$(date)] Checking Jellyfin activity..." >> "$LOG_FILE"
 
-# ----- GET SESSIONS -----
-echo "📡 Checking Jellyfin sessions..."
-SESSIONS=$(curl -s --connect-timeout 10 --max-time 15 -H "X-Emby-Token: $API_KEY" "$JELLYFIN_URL/Sessions" 2>&1)
+# ----- CONTAINER RESTART PROCESS -----
+echo "🚀 Starting container restart process..."
+echo "   Containers to restart: $CONTAINERS"
+echo "[$(date)] Restarting containers: $CONTAINERS..." >> "$LOG_FILE"
 
-if [ $? -ne 0 ]; then
-    echo "❌ ERROR: Failed to retrieve Jellyfin sessions"
-    echo "   Please check:"
-    echo "   - Jellyfin server is running"
-    echo "   - API key is correct"
-    echo "   - Network connectivity"
-    echo "   - API response: $SESSIONS"
-    exit 1
-fi
-
-# Check if API returned an error (simple JSON validation)
-if ! echo "$SESSIONS" | grep -q '"DeviceId\|DeviceName\|UserName"'; then
-    echo "❌ ERROR: Invalid API response format"
-    echo "   Response: $SESSIONS"
-    exit 1
-fi
-
-ACTIVE_COUNT=$(echo "$SESSIONS" | grep -o '"DeviceId"' | wc -l)
-
-echo "📊 Session Analysis:"
-echo "   Total active sessions: $ACTIVE_COUNT"
 if [ "$SHOW_CONSOLE_OUTPUT" = "true" ]; then
-    echo "   $ACTIVE_COUNT active sessions detected"
+    echo "Restarting containers: $CONTAINERS..."
 fi
-echo "[$(date)] Active sessions: $ACTIVE_COUNT" >> "$LOG_FILE"
 
-# ----- DECISION LOGIC -----
-if [ "$ACTIVE_COUNT" -eq 0 ]; then
-    echo "✅ No active sessions - proceeding with container restart"
-    echo "[$(date)] No active Jellyfin sessions found. Proceeding with restart." >> "$LOG_FILE"
-    
-    if [ "$SHOW_CONSOLE_OUTPUT" = "true" ]; then
-        echo "No active Jellyfin sessions found. Proceeding with restart."
-    fi
-    
+# Restart containers from config
+SUCCESS_COUNT=0
+FAILURE_COUNT=0
+
+for container in $CONTAINERS; do
     echo ""
-    echo "🚀 Starting container restart process..."
-    echo "   Containers to restart: $CONTAINERS"
-    echo "[$(date)] Restarting containers: $CONTAINERS..." >> "$LOG_FILE"
+    echo "🔄 Processing container: $container"
+    echo "[$(date)] Restarting $container container..." >> "$LOG_FILE"
     
     if [ "$SHOW_CONSOLE_OUTPUT" = "true" ]; then
-        echo "Restarting containers: $CONTAINERS..."
+        echo "Restarting $container container..."
     fi
-
-    # Restart containers from config
-    SUCCESS_COUNT=0
-    FAILURE_COUNT=0
     
-    for container in $CONTAINERS; do
-        echo ""
-        echo "🔄 Processing container: $container"
-        echo "[$(date)] Restarting $container container..." >> "$LOG_FILE"
-        
+    if [ "$DRY_RUN" = "true" ]; then
+        echo "🧪 [DRY RUN] Would restart $container container" >> "$LOG_FILE"
         if [ "$SHOW_CONSOLE_OUTPUT" = "true" ]; then
-            echo "Restarting $container container..."
+            echo "🧪 [DRY RUN] Would restart $container container"
+        fi
+        SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+    else
+        # Check if container is running before attempting restart
+        if ! $DOCKER ps --format "{{.Names}}" | grep -q "^$container$"; then
+            echo "⚠️  Container '$container' is not running, skipping restart" >> "$LOG_FILE"
+            if [ "$SHOW_CONSOLE_OUTPUT" = "true" ]; then
+                echo "⚠️  Container '$container' is not running, skipping restart"
+            fi
+            continue
         fi
         
-        if [ "$DRY_RUN" = "true" ]; then
-            echo "🧪 [DRY RUN] Would restart $container container" >> "$LOG_FILE"
+        if $DOCKER restart "$container" >> "$LOG_FILE" 2>&1; then
+            echo "✅ Successfully restarted $container container" >> "$LOG_FILE"
             if [ "$SHOW_CONSOLE_OUTPUT" = "true" ]; then
-                echo "🧪 [DRY RUN] Would restart $container container"
+                echo "✅ Successfully restarted $container container"
             fi
             SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
         else
-            # Check if container is running before attempting restart
-            if ! $DOCKER ps --format "{{.Names}}" | grep -q "^$container$"; then
-                echo "⚠️  Container '$container' is not running, skipping restart" >> "$LOG_FILE"
-                if [ "$SHOW_CONSOLE_OUTPUT" = "true" ]; then
-                    echo "⚠️  Container '$container' is not running, skipping restart"
-                fi
-                continue
+            echo "❌ ERROR: Failed to restart $container container" >> "$LOG_FILE"
+            if [ "$SHOW_CONSOLE_OUTPUT" = "true" ]; then
+                echo "❌ ERROR: Failed to restart $container container"
             fi
-            
-            if $DOCKER restart "$container" >> "$LOG_FILE" 2>&1; then
-                echo "✅ Successfully restarted $container container" >> "$LOG_FILE"
-                if [ "$SHOW_CONSOLE_OUTPUT" = "true" ]; then
-                    echo "✅ Successfully restarted $container container"
-                fi
-                SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
-            else
-                echo "❌ ERROR: Failed to restart $container container" >> "$LOG_FILE"
-                if [ "$SHOW_CONSOLE_OUTPUT" = "true" ]; then
-                    echo "❌ ERROR: Failed to restart $container container"
-                fi
-                FAILURE_COUNT=$((FAILURE_COUNT + 1))
-            fi
+            FAILURE_COUNT=$((FAILURE_COUNT + 1))
         fi
-    done
+    fi
+done
 
-    echo ""
-    echo "📈 Restart Summary:"
-    echo "   Successful restarts: $SUCCESS_COUNT"
-    if [ $FAILURE_COUNT -gt 0 ]; then
-        echo "   Failed restarts: $FAILURE_COUNT"
-    fi
-    echo "   Total containers processed: $SUCCESS_COUNT"
-    
-    echo "[$(date)] Restart process completed. Success: $SUCCESS_COUNT, Failed: $FAILURE_COUNT" >> "$LOG_FILE"
-    if [ "$SHOW_CONSOLE_OUTPUT" = "true" ]; then
-        echo "Restart process completed."
-    fi
-    
-    # Update cooldown tracking file on successful restart
-    if [ "$ENABLE_24_HOUR_COOLDOWN" = "true" ] && [ $SUCCESS_COUNT -gt 0 ]; then
-        echo "⏰ Updating 24-hour cooldown tracking..."
-        CURRENT_TIMESTAMP=$(date -Iseconds)
-        echo "$CURRENT_TIMESTAMP" > "$COOLDOWN_TRACKING_FILE"
-        echo "✅ Cooldown tracking updated: $CURRENT_TIMESTAMP"
-        echo "[$(date)] 24-hour cooldown tracking updated: $CURRENT_TIMESTAMP" >> "$LOG_FILE"
-    fi
+echo ""
+echo "📈 Restart Summary:"
+echo "   Successful restarts: $SUCCESS_COUNT"
+if [ $FAILURE_COUNT -gt 0 ]; then
+    echo "   Failed restarts: $FAILURE_COUNT"
+fi
+echo "   Total containers processed: $SUCCESS_COUNT"
 
-else
-    echo "⏸️  Active sessions detected - skipping container restart for user safety"
-    echo "[$(date)] Active sessions detected ($ACTIVE_COUNT). Skipping restart for user safety." >> "$LOG_FILE"
-    
-    if [ "$SHOW_CONSOLE_OUTPUT" = "true" ]; then
-        echo "Active sessions detected ($ACTIVE_COUNT). Skipping restart for user safety."
-    fi
+echo "[$(date)] Restart process completed. Success: $SUCCESS_COUNT, Failed: $FAILURE_COUNT" >> "$LOG_FILE"
+if [ "$SHOW_CONSOLE_OUTPUT" = "true" ]; then
+    echo "Restart process completed."
+fi
+
+# Update cooldown tracking file on successful restart
+if [ "$ENABLE_24_HOUR_COOLDOWN" = "true" ] && [ $SUCCESS_COUNT -gt 0 ]; then
+    echo "⏰ Updating 24-hour cooldown tracking..."
+    CURRENT_TIMESTAMP=$(date -Iseconds)
+    echo "$CURRENT_TIMESTAMP" > "$COOLDOWN_TRACKING_FILE"
+    echo "✅ Cooldown tracking updated: $CURRENT_TIMESTAMP"
+    echo "[$(date)] 24-hour cooldown tracking updated: $CURRENT_TIMESTAMP" >> "$LOG_FILE"
 fi
 
 echo ""
