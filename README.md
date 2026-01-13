@@ -20,3 +20,40 @@ The basic setup process is this:
 - That's it!
 
 This script is to solve a particular problem using a particular setup. YMMV. Hopefully somebody other than myself finds this useful.
+
+## Docker-Only Version
+
+This version has been modified for users running Docker containers directly without Portainer. It will restart specific containers (jellyfin, nextpvr, dispatcharr) instead of managing all containers through Portainer.
+
+### Setup for Docker-Only Users
+
+1. **Configure the script:**
+   - Set `JELLYFIN_URL` to your Jellyfin instance URL
+   - Set `API_KEY` to your Jellyfin API token
+   - Set `LOG_FILE` to your desired log file path
+
+2. **Make the script executable:**
+   ```bash
+   chmod +x jellyfin-rebooter.sh
+   ```
+
+3. **Test the script:**
+   ```bash
+   ./jellyfin-rebooter.sh
+   ```
+
+4. **Set up cron job:**
+   ```bash
+   crontab -e
+   # Add a line like this to run every day at 3 AM:
+   0 3 * * * /path/to/jellyfin-rebooter.sh
+   ```
+
+### Container Names
+
+The script is configured to restart these specific containers:
+- `jellyfin`
+- `nextpvr` 
+- `dispatcharr`
+
+If your container names are different, edit the script and change the container names in the restart commands.

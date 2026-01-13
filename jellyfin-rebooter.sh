@@ -7,9 +7,7 @@ API_KEY="JELLYFIN_TOKEN_HERE"
 LOG_FILE="LOG_DIRECTORY_HERE"
 MAX_LOG_SIZE=500000
 
-DOCKER="/usr/local/AppCentral/docker-ce/bin/docker"
-PORTAINER_SERVICE="portainer-ce"
-PORTAINER_CONTROL="/usr/local/AppCentral/$PORTAINER_SERVICE/CONTROL/start-stop.sh"
+DOCKER="docker"
 
 # ----- LOG ROTATION -----
 if [ -f "$LOG_FILE" ] && [ $(stat -c%s "$LOG_FILE") -gt $MAX_LOG_SIZE ]; then
@@ -37,21 +35,17 @@ ACTIVE_COUNT=$(echo "$SESSIONS" | grep -o '"DeviceId"' | wc -l)
 # ----- NO ACTIVE USERS -----
 if [ "$ACTIVE_COUNT" -eq 0 ]; then
     echo "[$(date)] No active Jellyfin sessions found." >> "$LOG_FILE"
-    echo "[$(date)] Restarting Portainer and all containers..." >> "$LOG_FILE"
+    echo "[$(date)] Restarting Jellyfin, NextPVR, and Dispatcharr containers..." >> "$LOG_FILE"
 
-    # Identify Portainer container ID (if any)
-    PORTAINER_ID=$($DOCKER ps -aqf "name=portainer" || true)
+    # Restart specific containers
+    echo "Restarting jellyfin container..." >> "$LOG_FILE"
+    $DOCKER restart jellyfin >> "$LOG_FILE" 2>&1
 
-    echo "Stopping containers..." >> "$LOG_FILE"
-    $DOCKER ps -q | grep -v "$PORTAINER_ID" | xargs -r -n1 $DOCKER stop >> "$LOG_FILE" 2>&1
+    echo "Restarting nextpvr container..." >> "$LOG_FILE"
+    $DOCKER restart nextpvr >> "$LOG_FILE" 2>&1
 
-    echo "Restarting Portainer service..." >> "$LOG_FILE"
-    $PORTAINER_CONTROL restart >> "$LOG_FILE" 2>&1
-
-    sleep 5
-
-    echo "Starting containers..." >> "$LOG_FILE"
-    $DOCKER ps -a -q | grep -v "$PORTAINER_ID" | xargs -r -n1 $DOCKER start >> "$LOG_FILE" 2>&1
+    echo "Restarting dispatcharr container..." >> "$LOG_FILE"
+    $DOCKER restart dispatcharr >> "$LOG_FILE" 2>&1
 
     echo "[$(date)] Restart complete." >> "$LOG_FILE"
 
